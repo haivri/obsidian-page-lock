@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.2 - 2026-09-02
+
+- Fixed stale editors on locked notes: Obsidian sometimes reloads an editor from disk as a
+  cursor-preserving diff rather than a full-document replacement, which the lock filter blocked.
+  The plugin now re-syncs any stale editor to disk content after a locked note is written
+  (fixes the remaining "failed to save" on mode switches and frontmatter not appearing after
+  locking).
+- `vault.process` writes that leave content unchanged now succeed as no-ops, matching the
+  `vault.modify` behavior.
+
 ## 1.0.1 - 2026-09-02
 
 - Fixed "failed to save" notices piling up and Reading view being unreachable on locked notes:

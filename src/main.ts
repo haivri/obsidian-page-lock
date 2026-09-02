@@ -12,8 +12,11 @@ import {
   editorInfoField,
   setIcon
 } from 'obsidian';
-import { EditorState, Transaction } from '@codemirror/state';
+import { Annotation, EditorState, Transaction } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
+
+/** Marks note-lock's own editor re-sync transactions so the filter lets them through. */
+const reloadAnnotation = Annotation.define<boolean>();
 
 // --- Settings ---------------------------------------------------------------
 
@@ -115,9 +118,12 @@ export default class NoteLockPlugin extends Plugin {
         if (!tr.docChanged) return tr;
         const file = tr.startState.field(editorInfoField, false)?.file;
         if (!file || !this.isFileLocked(file)) return tr;
+        if (tr.annotation(reloadAnnotation)) return tr;
         // Obsidian reloads an editor from disk as one full-document replacement
         // with no userEvent annotation; sync updates and our own frontmatter
         // write must still render. Anything else is an edit — block it.
+        // (Obsidian sometimes reloads as a diff instead; syncEditorsToDisk
+        // repairs those after the vault 'modify' event.)
         if (this.isFullDocReplace(tr)) return tr;
         this.notifyBlocked(file);
         return [];
@@ -169,6 +175,16 @@ export default class NoteLockPlugin extends Plugin {
     this.registerEvent(this.app.vault.on('delete', (abstractFile) => {
       this.lockStates.delete(abstractFile.path);
       this.noticeTimes.delete(abstractFile.path);
+    }));
+
+    // Obsidian's disk->editor reload is not always the full-document replacement
+    // the transaction filter allows — it can apply a cursor-preserving diff,
+    // which the filter blocks, leaving the editor stale after our frontmatter
+    // write or a sync update. Re-sync stale editors ourselves.
+    this.registerEvent(this.app.vault.on('modify', (abstractFile) => {
+      if (abstractFile instanceof TFile && this.isFileLocked(abstractFile)) {
+        window.setTimeout(() => void this.syncEditorsToDisk(abstractFile), 100);
+      }
     }));
 
     this.registerEvent(this.app.workspace.on('file-open', () => this.refreshAllViews()));
@@ -270,6 +286,25 @@ export default class NoteLockPlugin extends Plugin {
     this.refreshAllViews();
   }
 
+  private async syncEditorsToDisk(file: TFile): Promise<void> {
+    if (!this.isFileLocked(file)) return;
+    let content: string;
+    try {
+      content = await this.app.vault.cachedRead(file);
+    } catch {
+      return;
+    }
+    for (const view of this.allMarkdownViews()) {
+      if (view.file?.path !== file.path) continue;
+      const cm = (view.editor as unknown as { cm?: EditorView }).cm;
+      if (!cm || cm.state.doc.toString() === content) continue;
+      cm.dispatch({
+        changes: { from: 0, to: cm.state.doc.length, insert: content },
+        annotations: reloadAnnotation.of(true)
+      });
+    }
+  }
+
   private async unlockFlow(file: TFile): Promise<void> {
     if (this.settings.confirmUnlock) {
       const confirmed = await ConfirmUnlockModal.confirm(this.app, file.basename);
@@ -299,7 +334,18 @@ export default class NoteLockPlugin extends Plugin {
       return originalModify(file, data, options);
     };
     vault.append = (file, data, options) => guard(file) ?? originalAppend(file, data, options);
-    vault.process = (file, fn, options) => guard(file) ?? originalProcess(file, fn, options);
+    // Same no-op tolerance for process: a transform that leaves the content
+    // unchanged is not an edit, and some Obsidian save paths go through here.
+    vault.process = async (file, fn, options) => {
+      if (this.isGuarded(file)) {
+        const current = await vault.cachedRead(file);
+        const result = fn(current);
+        if (result === current) return result;
+        this.notifyBlocked(file);
+        throw new Error(`Note Lock: "${file.path}" is locked`);
+      }
+      return originalProcess(file, fn, options);
+    };
 
     this.register(() => {
       vault.modify = originalModify;
