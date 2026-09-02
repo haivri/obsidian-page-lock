@@ -1,0 +1,41 @@
+/* Note Lock — all selectors prefixed with note-lock-; colors come from
+   Obsidian theme variables so light/dark and community themes both work. */
+
+.markdown-source-view.note-lock-has-banner {
+  display: flex;
+  flex-direction: column;
+}
+
+.note-lock-banner {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.note-lock-banner:hover,
+.note-lock-banner:focus-visible {
+  color: var(--text-normal);
+}
+
+.note-lock-banner-icon {
+  display: flex;
+  align-items: center;
+}
+
+.note-lock-banner-icon svg {
+  width: var(--font-ui-smaller);
+  height: var(--font-ui-smaller);
+}
+
+.markdown-source-view.note-lock-dim .cm-editor {
+  opacity: 0.7;
+}
