@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.4 - 2026-09-02
+
+- Locked notes no longer show a text cursor: the editable facet could lose to Obsidian's own
+  higher-precedence provider, so the editor's contenteditable attribute never flipped. It is now
+  asserted directly (and only while locked). This also lets YAML Properties detect the read-only
+  state and swap its frontmatter editor to the read-only view.
+
 ## 1.0.3 - 2026-09-02
 
 - Editors are now re-synced immediately when a note is locked, instead of only ~100ms after the

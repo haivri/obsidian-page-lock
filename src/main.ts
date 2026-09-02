@@ -129,7 +129,13 @@ export default class NoteLockPlugin extends Plugin {
         return [];
       }),
       EditorView.editable.compute([editorInfoField], (state) => !this.stateIsLocked(state)),
-      EditorState.readOnly.compute([editorInfoField], (state) => this.stateIsLocked(state))
+      EditorState.readOnly.compute([editorInfoField], (state) => this.stateIsLocked(state)),
+      // The editable facet above can lose to Obsidian's own higher-precedence
+      // provider, leaving a live cursor on locked notes. contentAttributes
+      // overrides the contenteditable attribute regardless; assert it only
+      // while locked so unlocked notes stay entirely Obsidian-managed.
+      EditorView.contentAttributes.compute([editorInfoField], (state): Record<string, string> =>
+        this.stateIsLocked(state) ? { contenteditable: 'false' } : {})
     ]);
 
     this.installVaultGuard();
