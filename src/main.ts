@@ -12,7 +12,7 @@ import {
   editorInfoField,
   setIcon
 } from 'obsidian';
-import { Annotation, EditorState, Transaction } from '@codemirror/state';
+import { Annotation, EditorState, Prec, Transaction } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 
 /** Marks note-lock's own editor re-sync transactions so the filter lets them through. */
@@ -131,11 +131,13 @@ export default class NoteLockPlugin extends Plugin {
       EditorView.editable.compute([editorInfoField], (state) => !this.stateIsLocked(state)),
       EditorState.readOnly.compute([editorInfoField], (state) => this.stateIsLocked(state)),
       // The editable facet above can lose to Obsidian's own higher-precedence
-      // provider, leaving a live cursor on locked notes. contentAttributes
-      // overrides the contenteditable attribute regardless; assert it only
-      // while locked so unlocked notes stay entirely Obsidian-managed.
-      EditorView.contentAttributes.compute([editorInfoField], (state): Record<string, string> =>
-        this.stateIsLocked(state) ? { contenteditable: 'false' } : {})
+      // provider, leaving a live cursor on locked notes. Attribute sources are
+      // applied lowest-precedence first and plugin extensions sit at the
+      // bottom of that stack, so the assertion must carry highest precedence
+      // to actually land on the DOM. Asserted only while locked so unlocked
+      // notes stay entirely Obsidian-managed.
+      Prec.highest(EditorView.contentAttributes.compute([editorInfoField], (state): Record<string, string> =>
+        this.stateIsLocked(state) ? { contenteditable: 'false' } : {}))
     ]);
 
     this.installVaultGuard();

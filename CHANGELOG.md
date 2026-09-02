@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.5 - 2026-09-02
+
+- The contenteditable=false assertion on locked notes now carries highest CodeMirror precedence.
+  Attribute sources apply lowest-precedence first and plugin extensions sit at the bottom of that
+  stack, so the 1.0.4 assertion never reached the DOM — the cursor stayed visible and read-only
+  detection by other plugins (YAML Properties) still saw an editable editor.
+
 ## 1.0.4 - 2026-09-02
 
 - Locked notes no longer show a text cursor: the editable facet could lose to Obsidian's own
