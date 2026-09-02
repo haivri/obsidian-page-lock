@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.6 - 2026-09-02
+
+- Fixed unlocking not taking effect until the note was reopened: the read-only facets were
+  computed only at editor creation, so an unlock never reached an already-open editor. Lock state
+  now lives in a per-editor state field that the plugin updates explicitly on every lock flip,
+  making both lock and unlock apply instantly.
+
 ## 1.0.5 - 2026-09-02
 
 - The contenteditable=false assertion on locked notes now carries highest CodeMirror precedence.

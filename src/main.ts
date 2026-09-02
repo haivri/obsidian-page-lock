@@ -12,7 +12,7 @@ import {
   editorInfoField,
   setIcon
 } from 'obsidian';
-import { Annotation, EditorState, Prec, Transaction } from '@codemirror/state';
+import { Annotation, EditorState, Prec, StateEffect, StateField, Transaction } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 
 /** Marks note-lock's own editor re-sync transactions so the filter lets them through. */
@@ -108,6 +108,25 @@ export default class NoteLockPlugin extends Plugin {
   /** Path allowed through the vault guard while our own lock/unlock write runs. */
   private bypassPath: string | null = null;
 
+  /**
+   * Per-editor lock state. Initialized when an editor is created and updated
+   * by dispatching setLockedEffect from the refresh pass — computed facets are
+   * only evaluated at editor creation and workspace.updateOptions() does not
+   * reliably re-evaluate them, which left unlocked notes read-only until the
+   * editor was recreated.
+   */
+  private readonly setLockedEffect = StateEffect.define<boolean>();
+
+  private readonly lockedField = StateField.define<boolean>({
+    create: (state) => this.stateIsLocked(state),
+    update: (value, tr) => {
+      for (const effect of tr.effects) {
+        if (effect.is(this.setLockedEffect)) return effect.value;
+      }
+      return value;
+    }
+  });
+
   private readonly noticeTimes = new Map<string, number>();
 
   async onload(): Promise<void> {
@@ -128,16 +147,17 @@ export default class NoteLockPlugin extends Plugin {
         this.notifyBlocked(file);
         return [];
       }),
-      EditorView.editable.compute([editorInfoField], (state) => !this.stateIsLocked(state)),
-      EditorState.readOnly.compute([editorInfoField], (state) => this.stateIsLocked(state)),
+      this.lockedField,
+      EditorView.editable.from(this.lockedField, (locked) => !locked),
+      EditorState.readOnly.from(this.lockedField, (locked) => locked),
       // The editable facet above can lose to Obsidian's own higher-precedence
       // provider, leaving a live cursor on locked notes. Attribute sources are
       // applied lowest-precedence first and plugin extensions sit at the
       // bottom of that stack, so the assertion must carry highest precedence
       // to actually land on the DOM. Asserted only while locked so unlocked
       // notes stay entirely Obsidian-managed.
-      Prec.highest(EditorView.contentAttributes.compute([editorInfoField], (state): Record<string, string> =>
-        this.stateIsLocked(state) ? { contenteditable: 'false' } : {}))
+      Prec.highest(EditorView.contentAttributes.from(this.lockedField, (locked): Record<string, string> =>
+        locked ? { contenteditable: 'false' } : {}))
     ]);
 
     this.installVaultGuard();
@@ -218,7 +238,6 @@ export default class NoteLockPlugin extends Plugin {
   /** Re-evaluates every open editor and view after a settings change. */
   applySettingsChange(clearStates: boolean): void {
     if (clearStates) this.lockStates.clear();
-    this.app.workspace.updateOptions();
     this.refreshAllViews();
   }
 
@@ -260,7 +279,6 @@ export default class NoteLockPlugin extends Plugin {
     this.lockStates.set(file.path, locked);
     // Refresh on any flip, and on a lock first seen via sync/external edit.
     if (previous !== undefined || locked) {
-      this.app.workspace.updateOptions();
       this.refreshAllViews();
     }
   }
@@ -294,7 +312,6 @@ export default class NoteLockPlugin extends Plugin {
     // Re-sync immediately (not only via the delayed vault-modify path) so
     // anything reacting to the metadata change sees a fresh editor.
     if (locked) await this.syncEditorsToDisk(file);
-    this.app.workspace.updateOptions();
     this.refreshAllViews();
   }
 
@@ -426,6 +443,11 @@ export default class NoteLockPlugin extends Plugin {
     const file = view.file;
     if (!file || file.extension !== 'md') return;
     const locked = this.isFileLocked(file);
+
+    const cm = (view.editor as unknown as { cm?: EditorView }).cm;
+    if (cm && cm.state.field(this.lockedField, false) !== locked) {
+      cm.dispatch({ effects: this.setLockedEffect.of(locked) });
+    }
 
     const action = locked
       ? view.addAction('lock', 'Unlock note', () => void this.unlockFlow(file))
