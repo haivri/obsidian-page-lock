@@ -14,18 +14,21 @@ requests. The only thing it ever writes to a note is the lock property itself.
 - Blocks writes from other plugins too (Templater, linters, formatters) while a note is locked.
 - Stores the lock as a frontmatter property (`locked: true` by default), so it syncs to your
   other devices along with the note itself.
-- Slim, theme-aware banner across the top of the editor with a one-click/tap unlock.
-- Lock icon in the view header of locked notes — visible in Reading view too.
+- Locks the inline title too, so a locked note cannot be renamed from the editor.
+- Theme-aware pill banner at the top of the editor with a one-click/tap unlock.
+- Lock/unlock icon in the view header of every note — an open lock to lock, a closed lock to
+  unlock — visible in Reading view too.
 - Reading view stays completely clean: no banner, so PDF exports are untouched.
 - Lock or unlock via the command palette (hotkeyable), the file menu / three-dots menu, the
   banner, or the view-header icon.
 - Works on desktop and mobile; the keyboard does not pop up on a locked note.
-- Optional confirmation prompt before unlocking, and optional dimming of locked notes.
+- Optional confirmation prompt before unlocking.
 
 ## Usage
 
-- **Lock** — run *Toggle lock on current note* from the command palette, or choose **Lock note**
-  from the three-dots menu or the file explorer's context menu.
+- **Lock** — click/tap the open-lock icon in the view header, run *Toggle lock on current note*
+  from the command palette, or choose **Lock note** from the three-dots menu or the file
+  explorer's context menu.
 - **Unlock** — click/tap the banner, the lock icon in the view header, or use the same command
   or menu item again.
 - Assign a hotkey to *Toggle lock on current note* under **Settings → Hotkeys** for one-keystroke
@@ -52,7 +55,6 @@ windows, and embedded editors. Canvas files and other non-markdown files are not
 
 - **Lock property name** — the frontmatter property that marks a note as locked
   (default `locked`).
-- **Dim locked notes** — slightly fade the editor content of locked notes (default on).
 - **Confirm before unlocking** — ask before unlocking, preventing accidental unlocks from a
   stray tap (default off).
 

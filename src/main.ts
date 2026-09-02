@@ -19,13 +19,11 @@ import { EditorView } from '@codemirror/view';
 
 interface NoteLockSettings {
   propertyName: string;
-  dimLocked: boolean;
   confirmUnlock: boolean;
 }
 
 const DEFAULT_SETTINGS: NoteLockSettings = {
   propertyName: 'locked',
-  dimLocked: true,
   confirmUnlock: false
 };
 
@@ -33,15 +31,13 @@ const DEFAULT_SETTINGS: NoteLockSettings = {
 
 const BANNER_CLASS = 'note-lock-banner';
 const HAS_BANNER_CLASS = 'note-lock-has-banner';
-const DIM_CLASS = 'note-lock-dim';
 const ACTION_CLASS = 'note-lock-action';
+const TITLE_LOCKED_CLASS = 'note-lock-title-locked';
 const NOTICE_DEBOUNCE_MS = 2000;
 
 const PROPERTY_NAME_DESC =
   'Frontmatter property that marks a note as locked. The lock travels with the note, ' +
   'so it syncs to other devices. Existing notes keep any previously used property.';
-const DIM_DESC =
-  'Slightly fade the editor content of locked notes so their read-only state is visible at a glance.';
 const CONFIRM_DESC =
   'Ask for confirmation before unlocking a note, preventing accidental unlocks from a stray tap.';
 
@@ -291,7 +287,17 @@ export default class NoteLockPlugin extends Plugin {
     const originalProcess = vault.process.bind(vault);
     const guard = (file: TFile): Promise<never> | null => this.guardRejection(file);
 
-    vault.modify = (file, data, options) => guard(file) ?? originalModify(file, data, options);
+    // The read-only editor still flushes saves (mode switches, interval saves);
+    // those carry unchanged content and must succeed as no-ops, or Obsidian
+    // shows "failed to save" and refuses to switch to reading mode.
+    vault.modify = async (file, data, options) => {
+      if (this.isGuarded(file)) {
+        if (data === await vault.cachedRead(file)) return;
+        this.notifyBlocked(file);
+        throw new Error(`Note Lock: "${file.path}" is locked`);
+      }
+      return originalModify(file, data, options);
+    };
     vault.append = (file, data, options) => guard(file) ?? originalAppend(file, data, options);
     vault.process = (file, fn, options) => guard(file) ?? originalProcess(file, fn, options);
 
@@ -302,9 +308,13 @@ export default class NoteLockPlugin extends Plugin {
     });
   }
 
+  private isGuarded(file: TFile): boolean {
+    if (!(file instanceof TFile) || file.extension !== 'md') return false;
+    return file.path !== this.bypassPath && this.isFileLocked(file);
+  }
+
   private guardRejection(file: TFile): Promise<never> | null {
-    if (!(file instanceof TFile) || file.extension !== 'md') return null;
-    if (file.path === this.bypassPath || !this.isFileLocked(file)) return null;
+    if (!this.isGuarded(file)) return null;
     this.notifyBlocked(file);
     return Promise.reject(new Error(`Note Lock: "${file.path}" is locked`));
   }
@@ -335,18 +345,36 @@ export default class NoteLockPlugin extends Plugin {
     view.contentEl.querySelectorAll(`.${BANNER_CLASS}`).forEach((el) => el.remove());
     view.containerEl.querySelectorAll(`.${ACTION_CLASS}`).forEach((el) => el.remove());
     view.contentEl.querySelector<HTMLElement>('.markdown-source-view')
-      ?.removeClasses([HAS_BANNER_CLASS, DIM_CLASS]);
+      ?.removeClasses([HAS_BANNER_CLASS]);
+    view.contentEl.querySelectorAll<HTMLElement>(`.inline-title.${TITLE_LOCKED_CLASS}`).forEach((el) => {
+      el.contentEditable = 'true';
+      el.removeClass(TITLE_LOCKED_CLASS);
+    });
   }
 
   private refreshView(view: MarkdownView): void {
     this.clearViewDecorations(view);
     const file = view.file;
-    if (!file || !this.isFileLocked(file)) return;
+    if (!file || file.extension !== 'md') return;
+    const locked = this.isFileLocked(file);
+
+    const action = locked
+      ? view.addAction('lock', 'Unlock note', () => void this.unlockFlow(file))
+      : view.addAction('lock-open', 'Lock note', () => void this.setLocked(file, true));
+    action.addClass(ACTION_CLASS);
+
+    if (!locked) return;
+
+    // The inline title is a contenteditable element outside CodeMirror; left
+    // alone it would still allow renaming a locked note.
+    view.contentEl.querySelectorAll<HTMLElement>('.inline-title').forEach((el) => {
+      el.contentEditable = 'false';
+      el.addClass(TITLE_LOCKED_CLASS);
+    });
 
     const sourceView = view.contentEl.querySelector<HTMLElement>('.markdown-source-view');
     if (sourceView) {
       sourceView.addClass(HAS_BANNER_CLASS);
-      if (this.settings.dimLocked) sourceView.addClass(DIM_CLASS);
 
       const banner = sourceView.createDiv({
         cls: BANNER_CLASS,
@@ -365,9 +393,6 @@ export default class NoteLockPlugin extends Plugin {
       });
       sourceView.prepend(banner);
     }
-
-    const action = view.addAction('lock', 'Unlock note', () => void this.unlockFlow(file));
-    action.addClass(ACTION_CLASS);
   }
 }
 
@@ -393,16 +418,6 @@ class NoteLockSettingTab extends PluginSettingTab {
         }
       },
       {
-        name: 'Dim locked notes',
-        desc: DIM_DESC,
-        aliases: ['fade', 'opacity'],
-        control: {
-          type: 'toggle',
-          key: 'dimLocked',
-          defaultValue: DEFAULT_SETTINGS.dimLocked
-        }
-      },
-      {
         name: 'Confirm before unlocking',
         desc: CONFIRM_DESC,
         aliases: ['confirmation', 'accidental unlock'],
@@ -418,7 +433,6 @@ class NoteLockSettingTab extends PluginSettingTab {
   getControlValue(key: string): unknown {
     switch (key) {
       case 'propertyName': return this.plugin.settings.propertyName;
-      case 'dimLocked': return this.plugin.settings.dimLocked;
       case 'confirmUnlock': return this.plugin.settings.confirmUnlock;
       default: return undefined;
     }
@@ -428,12 +442,6 @@ class NoteLockSettingTab extends PluginSettingTab {
     switch (key) {
       case 'propertyName':
         if (typeof value === 'string') await this.applyPropertyName(value);
-        return;
-      case 'dimLocked':
-        if (typeof value !== 'boolean') return;
-        this.plugin.settings.dimLocked = value;
-        await this.plugin.saveSettings();
-        this.plugin.refreshAllViews();
         return;
       case 'confirmUnlock':
         if (typeof value !== 'boolean') return;
@@ -468,17 +476,6 @@ class NoteLockSettingTab extends PluginSettingTab {
         .setValue(this.plugin.settings.propertyName)
         .onChange(async (value) => {
           await this.applyPropertyName(value);
-        }));
-
-    new Setting(containerEl)
-      .setName('Dim locked notes')
-      .setDesc(DIM_DESC)
-      .addToggle((toggle) => toggle
-        .setValue(this.plugin.settings.dimLocked)
-        .onChange(async (value) => {
-          this.plugin.settings.dimLocked = value;
-          await this.plugin.saveSettings();
-          this.plugin.refreshAllViews();
         }));
 
     new Setting(containerEl)
