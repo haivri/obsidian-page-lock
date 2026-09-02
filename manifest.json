@@ -1,7 +1,7 @@
 {
   "id": "note-lock",
   "name": "Note Lock",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "minAppVersion": "1.5.0",
   "description": "Lock notes against editing until unlocked, with a frontmatter-synced lock that blocks the editor and other plugins.",
   "author": "Robert Fleming",
