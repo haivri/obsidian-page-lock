@@ -274,6 +274,7 @@ export default class NoteLockPlugin extends Plugin {
         if (locked) frontmatter[this.settings.propertyName] = true;
         else delete frontmatter[this.settings.propertyName];
       });
+      if (!locked) await this.removeEmptyFrontmatter(file);
       new Notice(locked ? `Locked "${file.basename}"` : `Unlocked "${file.basename}"`);
     } catch (error) {
       this.lockStates.delete(file.path);
@@ -282,8 +283,22 @@ export default class NoteLockPlugin extends Plugin {
     } finally {
       this.bypassPath = null;
     }
+    // Re-sync immediately (not only via the delayed vault-modify path) so
+    // anything reacting to the metadata change sees a fresh editor.
+    if (locked) await this.syncEditorsToDisk(file);
     this.app.workspace.updateOptions();
     this.refreshAllViews();
+  }
+
+  /**
+   * processFrontMatter can leave an empty `---` block behind when the lock was
+   * the note's only property; strip it so no phantom lines remain after unlock.
+   */
+  private async removeEmptyFrontmatter(file: TFile): Promise<void> {
+    const content = await this.app.vault.read(file);
+    const match = content.match(/^---[ \t]*\n(?:[ \t]*\n)*---[ \t]*\r?\n?/);
+    if (!match) return;
+    await this.app.vault.modify(file, content.slice(match[0].length));
   }
 
   private async syncEditorsToDisk(file: TFile): Promise<void> {

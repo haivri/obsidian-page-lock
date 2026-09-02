@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3 - 2026-09-02
+
+- Editors are now re-synced immediately when a note is locked, instead of only ~100ms after the
+  vault write, so plugins reacting to the frontmatter change never see a stale editor.
+- Unlocking a note whose only frontmatter property was the lock no longer leaves an empty `---`
+  block (a phantom un-deletable first line) behind.
+
 ## 1.0.2 - 2026-09-02
 
 - Fixed stale editors on locked notes: Obsidian sometimes reloads an editor from disk as a
