@@ -23,11 +23,13 @@ const reloadAnnotation = Annotation.define<boolean>();
 interface NoteLockSettings {
   propertyName: string;
   confirmUnlock: boolean;
+  showLockBanner: boolean;
 }
 
 const DEFAULT_SETTINGS: NoteLockSettings = {
   propertyName: 'locked',
-  confirmUnlock: false
+  confirmUnlock: false,
+  showLockBanner: true
 };
 
 // --- Constants --------------------------------------------------------------
@@ -41,6 +43,8 @@ const NOTICE_DEBOUNCE_MS = 2000;
 const PROPERTY_NAME_DESC =
   'Frontmatter property that marks a note as locked. The lock travels with the note, ' +
   'so it syncs to other devices. Existing notes keep any previously used property.';
+const BANNER_DESC = 'Show the locked-note banner above the note. Turn off to use only the header lock icon; editing protection stays active.';
+
 const CONFIRM_DESC =
   'Ask for confirmation before unlocking a note, preventing accidental unlocks from a stray tap.';
 
@@ -523,6 +527,8 @@ export default class NoteLockPlugin extends Plugin {
       el.addClass(TITLE_LOCKED_CLASS);
     });
 
+    if (!this.settings.showLockBanner) return;
+
     const sourceView = view.contentEl.querySelector<HTMLElement>('.markdown-source-view');
     if (sourceView) {
       const banner = sourceView.createDiv({
@@ -580,6 +586,12 @@ class NoteLockSettingTab extends PluginSettingTab {
         }
       },
       {
+        name: 'Show locked-note banner',
+        desc: BANNER_DESC,
+        aliases: ['notification', 'hide banner', 'lock indicator'],
+        control: { type: 'toggle', key: 'showLockBanner', defaultValue: DEFAULT_SETTINGS.showLockBanner }
+      },
+      {
         name: 'Confirm before unlocking',
         desc: CONFIRM_DESC,
         aliases: ['confirmation', 'accidental unlock'],
@@ -595,6 +607,7 @@ class NoteLockSettingTab extends PluginSettingTab {
   getControlValue(key: string): unknown {
     switch (key) {
       case 'propertyName': return this.plugin.settings.propertyName;
+      case 'showLockBanner': return this.plugin.settings.showLockBanner;
       case 'confirmUnlock': return this.plugin.settings.confirmUnlock;
       default: return undefined;
     }
@@ -604,6 +617,12 @@ class NoteLockSettingTab extends PluginSettingTab {
     switch (key) {
       case 'propertyName':
         if (typeof value === 'string') await this.applyPropertyName(value);
+        return;
+      case 'showLockBanner':
+        if (typeof value !== 'boolean') return;
+        this.plugin.settings.showLockBanner = value;
+        this.plugin.applySettingsChange(false);
+        await this.plugin.saveSettings();
         return;
       case 'confirmUnlock':
         if (typeof value !== 'boolean') return;
@@ -638,6 +657,15 @@ class NoteLockSettingTab extends PluginSettingTab {
         .setValue(this.plugin.settings.propertyName)
         .onChange(async (value) => {
           await this.applyPropertyName(value);
+        }));
+
+    new Setting(containerEl)
+      .setName('Show locked-note banner')
+      .setDesc(BANNER_DESC)
+      .addToggle((toggle) => toggle
+        .setValue(this.plugin.settings.showLockBanner)
+        .onChange(async (value) => {
+          await this.setControlValue('showLockBanner', value);
         }));
 
     new Setting(containerEl)

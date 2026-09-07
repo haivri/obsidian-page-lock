@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0 - 2026-09-07
+
+- Added Show locked-note banner in plugin settings. Disable it to remove the banner and its spacing while retaining the header lock icon, title protection, and all edit/write guards. Changes apply immediately to open notes.
+
 ## 1.0.9 - 2026-09-07
 
 - Removed the mobile whole-view padding that displaced Obsidian’s floating toolbar. The unlock banner now sits immediately above the inline title inside the note’s existing content inset, avoiding duplicated top spacing.

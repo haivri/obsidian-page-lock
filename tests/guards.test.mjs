@@ -146,6 +146,15 @@ test('mobile banner uses the note inset without moving the toolbar and disappear
   assert.equal(document.querySelector('.markdown-source-view').classList.contains('note-lock-has-banner'), false);
   plugin.refreshView(view);
   assert.equal(document.querySelectorAll('.note-lock-banner').length, 1);
+  plugin.settings = { ...plugin.settings, showLockBanner: false };
+  plugin.refreshView(view);
+  assert.equal(document.querySelector('.note-lock-banner'), null);
+  assert.ok(header.querySelector('.note-lock-action'));
+  assert.equal(plugin.isFileLocked(file), true);
+  assert.equal(document.querySelector('.inline-title').contentEditable, 'false');
+  plugin.settings.showLockBanner = true;
+  plugin.refreshView(view);
+  assert.ok(document.querySelector('.note-lock-banner'));
   plugin.lockStates.set(file.path, false);
   plugin.refreshView(view);
   assert.equal(document.querySelector('.note-lock-banner'), null);

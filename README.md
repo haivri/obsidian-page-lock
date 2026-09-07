@@ -56,6 +56,9 @@ windows, and embedded editors. Canvas files and other non-markdown files are not
 
 ## Settings
 
+- **Show locked-note banner** — Turn off to remove the banner and use only the header
+  lock icon. Editing protection stays active. This applies immediately to open notes.
+
 - **Lock property name** — the frontmatter property that marks a note as locked
   (default `locked`).
 - **Confirm before unlocking** — ask before unlocking, preventing accidental unlocks from a
