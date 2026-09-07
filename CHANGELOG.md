@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.9 - 2026-09-07
+
+- Removed the mobile whole-view padding that displaced Obsidian’s floating toolbar. The unlock banner now sits immediately above the inline title inside the note’s existing content inset, avoiding duplicated top spacing.
+- Added a regression test for banner placement, repeated refreshes, and cleanup on unlock.
+
 ## 1.0.8 - 2026-09-07
 
 - Added mobile safe-area spacing to the locked view so the unlock control, header, and title sit below screen cutouts. The banner reserves space above the editor and provides a 44px touch target. Spacing is removed when the note is unlocked or the plugin unloads.

@@ -1,6 +1,6 @@
 {
   "name": "note-lock",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Lock notes against editing until unlocked, with a frontmatter-synced lock that blocks the editor and other plugins.",
   "main": "main.js",
   "scripts": {

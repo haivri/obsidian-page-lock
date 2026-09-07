@@ -47,14 +47,6 @@
   cursor: default;
 }
 
-/* Move the whole locked view, including its header and inline title, below
-   the mobile cutout. Padding participates in layout rather than translating
-   the unlock button over the title. Desktop styling is unchanged. */
-body.is-mobile .workspace-leaf-content.note-lock-protected-view {
-  box-sizing: border-box;
-  padding-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
-}
-
 /* The banner occupies its own row; let the editor use the remaining height. */
 body.is-mobile .markdown-source-view.note-lock-has-banner > .cm-editor {
   flex: 1 1 auto;
@@ -64,5 +56,12 @@ body.is-mobile .markdown-source-view.note-lock-has-banner > .cm-editor {
 body.is-mobile .note-lock-banner {
   min-height: 44px;
   box-sizing: border-box;
-  margin-bottom: 6px;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+  margin: 0 auto 12px;
+}
+
+/* Only used if Obsidian has not supplied a note-content container yet. */
+body.is-mobile .note-lock-banner-fallback {
+  margin-top: max(10px, env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
 }

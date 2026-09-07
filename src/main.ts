@@ -34,7 +34,6 @@ const DEFAULT_SETTINGS: NoteLockSettings = {
 
 const BANNER_CLASS = 'note-lock-banner';
 const HAS_BANNER_CLASS = 'note-lock-has-banner';
-const PROTECTED_VIEW_CLASS = 'note-lock-protected-view';
 const ACTION_CLASS = 'note-lock-action';
 const TITLE_LOCKED_CLASS = 'note-lock-title-locked';
 const NOTICE_DEBOUNCE_MS = 2000;
@@ -488,7 +487,6 @@ export default class NoteLockPlugin extends Plugin {
   }
 
   private clearViewDecorations(view: MarkdownView): void {
-    view.containerEl.removeClass(PROTECTED_VIEW_CLASS);
     view.contentEl.querySelectorAll(`.${BANNER_CLASS}`).forEach((el) => el.remove());
     view.containerEl.querySelectorAll(`.${ACTION_CLASS}`).forEach((el) => el.remove());
     view.contentEl.querySelector<HTMLElement>('.markdown-source-view')
@@ -517,7 +515,6 @@ export default class NoteLockPlugin extends Plugin {
     action.addClass(ACTION_CLASS);
 
     if (!locked) return;
-    view.containerEl.addClass(PROTECTED_VIEW_CLASS);
 
     // The inline title is a contenteditable element outside CodeMirror; left
     // alone it would still allow renaming a locked note.
@@ -528,8 +525,6 @@ export default class NoteLockPlugin extends Plugin {
 
     const sourceView = view.contentEl.querySelector<HTMLElement>('.markdown-source-view');
     if (sourceView) {
-      sourceView.addClass(HAS_BANNER_CLASS);
-
       const banner = sourceView.createDiv({
         cls: BANNER_CLASS,
         attr: { role: 'button', tabindex: '0', 'aria-label': 'Unlock note' }
@@ -545,7 +540,20 @@ export default class NoteLockPlugin extends Plugin {
         event.preventDefault();
         void this.unlockFlow(file);
       });
-      sourceView.prepend(banner);
+      // Mobile places the toolbar over the editor. Put our banner in the
+      // note's existing content inset, before the inline title, so we reuse
+      // Obsidian's safe-area spacing without moving its floating controls.
+      const title = Platform.isMobile ? sourceView.querySelector('.inline-title') : null;
+      const sizer = Platform.isMobile ? sourceView.querySelector('.cm-sizer') : null;
+      if (title?.parentElement) {
+        title.before(banner);
+      } else if (sizer) {
+        sizer.prepend(banner);
+      } else {
+        sourceView.addClass(HAS_BANNER_CLASS);
+        if (Platform.isMobile) banner.addClass('note-lock-banner-fallback');
+        sourceView.prepend(banner);
+      }
     }
   }
 }

@@ -116,3 +116,40 @@ for (const locked of [true, false]) {
     dom.window.close();
   });
 }
+
+test('mobile banner uses the note inset without moving the toolbar and disappears on unlock', () => {
+  const { plugin, file } = setup();
+  const dom = new JSDOM('<main><header>Toolbar</header><section><div class="markdown-source-view"><div class="cm-editor"><div class="cm-scroller"><div class="cm-sizer"><div class="inline-title">Title</div><div class="cm-content">Note</div></div></div></div></div></section></main>');
+  const { document, HTMLElement } = dom.window;
+  HTMLElement.prototype.addClass = function (name) { this.classList.add(name); };
+  HTMLElement.prototype.removeClass = function (name) { this.classList.remove(name); };
+  HTMLElement.prototype.removeClasses = function (names) { this.classList.remove(...names); };
+  HTMLElement.prototype.createEl = function (tag, options = {}) {
+    const el = document.createElement(tag);
+    if (options.cls) el.className = options.cls;
+    if (options.text) el.textContent = options.text;
+    for (const [key, value] of Object.entries(options.attr ?? {})) el.setAttribute(key, value);
+    this.append(el); return el;
+  };
+  HTMLElement.prototype.createDiv = function (options) { return this.createEl('div', options); };
+  HTMLElement.prototype.createSpan = function (options) { return this.createEl('span', options); };
+  obsidian.Platform = { isMobile: true };
+  obsidian.setIcon = () => {};
+  const container = document.querySelector('main');
+  const header = document.querySelector('header');
+  const view = { containerEl: container, contentEl: document.querySelector('section'), file, editor: {},
+    addAction: () => header.createEl('button') };
+  plugin.refreshView(view);
+  assert.equal(container.firstElementChild, header);
+  assert.equal(container.getAttribute('style'), null);
+  assert.equal(document.querySelector('.note-lock-banner').nextElementSibling, document.querySelector('.inline-title'));
+  assert.equal(document.querySelector('.markdown-source-view').classList.contains('note-lock-has-banner'), false);
+  plugin.refreshView(view);
+  assert.equal(document.querySelectorAll('.note-lock-banner').length, 1);
+  plugin.lockStates.set(file.path, false);
+  plugin.refreshView(view);
+  assert.equal(document.querySelector('.note-lock-banner'), null);
+  assert.equal(container.firstElementChild, header);
+  for (const cleanup of plugin.cleanups) cleanup();
+  dom.window.close();
+});
