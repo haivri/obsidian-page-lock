@@ -34,6 +34,7 @@ const DEFAULT_SETTINGS: NoteLockSettings = {
 
 const BANNER_CLASS = 'note-lock-banner';
 const HAS_BANNER_CLASS = 'note-lock-has-banner';
+const PROTECTED_VIEW_CLASS = 'note-lock-protected-view';
 const ACTION_CLASS = 'note-lock-action';
 const TITLE_LOCKED_CLASS = 'note-lock-title-locked';
 const NOTICE_DEBOUNCE_MS = 2000;
@@ -487,6 +488,7 @@ export default class NoteLockPlugin extends Plugin {
   }
 
   private clearViewDecorations(view: MarkdownView): void {
+    view.containerEl.removeClass(PROTECTED_VIEW_CLASS);
     view.contentEl.querySelectorAll(`.${BANNER_CLASS}`).forEach((el) => el.remove());
     view.containerEl.querySelectorAll(`.${ACTION_CLASS}`).forEach((el) => el.remove());
     view.contentEl.querySelector<HTMLElement>('.markdown-source-view')
@@ -515,6 +517,7 @@ export default class NoteLockPlugin extends Plugin {
     action.addClass(ACTION_CLASS);
 
     if (!locked) return;
+    view.containerEl.addClass(PROTECTED_VIEW_CLASS);
 
     // The inline title is a contenteditable element outside CodeMirror; left
     // alone it would still allow renaming a locked note.

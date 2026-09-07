@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.8 - 2026-09-07
+
+- Added mobile safe-area spacing to the locked view so the unlock control, header, and title sit below screen cutouts. The banner reserves space above the editor and provides a 44px touch target. Spacing is removed when the note is unlocked or the plugin unloads.
+
 ## 1.0.7 - 2026-09-07
 
 - Locked notes now block rendered checkboxes, Meta Bind inputs/buttons, and property controls before their event handlers can change local state, in Reading view and Live Preview.
