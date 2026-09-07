@@ -11,6 +11,8 @@ requests. The only thing it ever writes to a note is the lock property itself.
 
 - Locks a note against every edit: typing, paste, drag-and-drop, cut, and undo are all blocked
   in Live Preview and Source mode.
+- Blocks rendered task checkboxes, Meta Bind fields/buttons, and property controls in
+  Reading view and Live Preview, while keeping note links and unlocking available.
 - Blocks writes from other plugins too (Templater, linters, formatters) while a note is locked.
 - Stores the lock as a frontmatter property (`locked: true` by default), so it syncs to your
   other devices along with the note itself.
@@ -39,6 +41,7 @@ requests. The only thing it ever writes to a note is the lock property itself.
 The lock lives in the note's frontmatter (default property: `locked`). While it is set:
 
 - The editor becomes read-only at the CodeMirror level, so no edit can reach the document.
+- Frontmatter writes are checked before a plugin’s callback can change metadata.
 - Obsidian's file-write API refuses changes to the note from any plugin, with a notice.
 - Sync and external tools can still update the file — locking protects against edits inside
   Obsidian, not against your sync service.

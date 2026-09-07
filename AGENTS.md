@@ -22,6 +22,7 @@
   no `userEvent` annotation (Obsidian's disk→editor reload). A plugin doing a programmatic
   full-document replace can therefore transiently change the display, but the vault guard blocks
   persistence — accepted trade-off.
-- The vault guard patches `vault.modify`/`append`/`process` only. The adapter is deliberately
+- The write guards patch `vault.modify`/`append`/`process` and
+  `fileManager.processFrontMatter`. Rendered controls are guarded at the view capture phase. The adapter is deliberately
   untouched so Obsidian Sync and external tools can always update locked files.
 - `workspace.updateOptions()` is expensive; call it only on actual lock flips.

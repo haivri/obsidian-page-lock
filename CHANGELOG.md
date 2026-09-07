@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.7 - 2026-09-07
+
+- Locked notes now block rendered checkboxes, Meta Bind inputs/buttons, and property controls before their event handlers can change local state, in Reading view and Live Preview.
+- Guarded FileManager.processFrontMatter so bound-field writes cannot bypass the vault write guards.
+- Added DOM and file-write regression tests covering locked/unlocked controls, navigation, and cleanup.
+
 ## 1.0.6 - 2026-09-02
 
 - Fixed unlocking not taking effect until the note was reopened: the read-only facets were

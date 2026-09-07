@@ -127,6 +127,8 @@ export default class NoteLockPlugin extends Plugin {
     }
   });
 
+  private readonly guardedViews = new WeakSet<MarkdownView>();
+
   private readonly noticeTimes = new Map<string, number>();
 
   async onload(): Promise<void> {
@@ -360,6 +362,8 @@ export default class NoteLockPlugin extends Plugin {
     const originalModify = vault.modify.bind(vault);
     const originalAppend = vault.append.bind(vault);
     const originalProcess = vault.process.bind(vault);
+    const fileManager = this.app.fileManager;
+    const originalFrontMatter = fileManager.processFrontMatter.bind(fileManager);
     const guard = (file: TFile): Promise<never> | null => this.guardRejection(file);
 
     // The read-only editor still flushes saves (mode switches, interval saves);
@@ -387,7 +391,13 @@ export default class NoteLockPlugin extends Plugin {
       return originalProcess(file, fn, options);
     };
 
+    // Meta Bind and property widgets can use this path without going through
+    // the public vault methods. Reject before their callback changes metadata.
+    fileManager.processFrontMatter = (file, fn, options) =>
+      guard(file) ?? originalFrontMatter(file, fn, options);
+
     this.register(() => {
+      fileManager.processFrontMatter = originalFrontMatter;
       vault.modify = originalModify;
       vault.append = originalAppend;
       vault.process = originalProcess;
@@ -427,6 +437,55 @@ export default class NoteLockPlugin extends Plugin {
     for (const view of this.allMarkdownViews()) this.refreshView(view);
   }
 
+  /** Stop widgets before their handlers update local state or queue a save. */
+  private installControlGuard(view: MarkdownView): void {
+    if (this.guardedViews.has(view)) return;
+    this.guardedViews.add(view);
+    const intercept = (event: Event): void => {
+      // Use the event path so controls also work in detached Obsidian windows.
+      const target = event.composedPath()[0] as Element | undefined;
+      if (!target || typeof target.closest !== 'function') return;
+      if (target.closest(`.${BANNER_CLASS}, .${ACTION_CLASS}`)) return;
+      const control = target.closest([
+        'input', 'textarea', 'select',
+        '[role="checkbox"]', '[role="switch"]', '[role="slider"]',
+        '[role="spinbutton"]', '[role="combobox"]',
+        '.checkbox-container', '.task-list-item-checkbox',
+        '.mb-input', '.mb-input-wrapper', '.mb-button',
+        '.metadata-property-value',
+        '[contenteditable="true"]:not(.cm-content)'
+      ].join(', '));
+      // Clicking an associated label activates its input too.
+      const label = target.closest('label');
+      if (!control && !label?.control) return;
+      let file = view.file;
+      const embed = target.closest('.internal-embed[src]');
+      const source = embed?.getAttribute('src');
+      if (source && file) {
+        const embeddedFile = this.app.metadataCache.getFirstLinkpathDest(source.split('#')[0], file.path);
+        // A locked host also protects controls bound to other notes.
+        if (!this.isFileLocked(file) && embeddedFile) file = embeddedFile;
+      }
+      if (!file || !this.isFileLocked(file)) return;
+      if (event.type === 'keydown') {
+        const key = event as KeyboardEvent;
+        // Preserve keyboard navigation and copying values from locked fields.
+        if (key.key === 'Tab' || key.key === 'Escape' ||
+          ((key.ctrlKey || key.metaKey) && ['a', 'c'].includes(key.key.toLowerCase()))) return;
+      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      this.notifyBlocked(file);
+    };
+    // Capture on the view, before native checkbox activation, Meta Bind's
+    // handlers, and CodeMirror widgets. Delegation covers subsequent renders.
+    for (const name of ['pointerdown', 'mousedown', 'touchstart', 'click', 'dblclick',
+      'keydown', 'beforeinput', 'input', 'change', 'paste', 'cut', 'drop']) {
+      this.registerDomEvent(view.contentEl, name as keyof HTMLElementEventMap, intercept,
+        { capture: true, passive: false });
+    }
+  }
+
   private clearViewDecorations(view: MarkdownView): void {
     view.contentEl.querySelectorAll(`.${BANNER_CLASS}`).forEach((el) => el.remove());
     view.containerEl.querySelectorAll(`.${ACTION_CLASS}`).forEach((el) => el.remove());
@@ -439,6 +498,7 @@ export default class NoteLockPlugin extends Plugin {
   }
 
   private refreshView(view: MarkdownView): void {
+    this.installControlGuard(view);
     this.clearViewDecorations(view);
     const file = view.file;
     if (!file || file.extension !== 'md') return;
