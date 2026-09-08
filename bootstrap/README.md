@@ -1,4 +1,4 @@
-# note-lock screenshot kit
+# page-lock screenshot kit
 
 Copy the `vault` folder's contents into a folder called `Plugin Showcase` in any Obsidian vault. Enable this plugin first. The demo contains no personal information and does not change plugin settings. For Gallery and Fullscreen Image, copy both kits to the same folder to share the photos. Remove `Plugin Showcase` when finished.
 

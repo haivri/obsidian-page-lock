@@ -1,10 +1,10 @@
-# Note Lock
+# Page Lock
 
 Lock a note so it cannot be edited until you unlock it — like Notion's "lock page", but for
 Obsidian. A locked note shows a lock icon in the view header and an optional slim banner; unlock with a
 click, a command, or the file menu.
 
-Note Lock is deliberately small and local-first. It does not collect telemetry or make network
+Page Lock is deliberately small and local-first. It does not collect telemetry or make network
 requests. The only thing it ever writes to a note is the lock property itself.
 
 ## Features
@@ -100,21 +100,29 @@ windows, and embedded editors. Canvas files and other non-markdown files are not
 - **Confirm before unlocking** — ask before unlocking, preventing accidental unlocks from a
   stray tap (default off).
 
+## Migrating from Note Lock
+
+Page Lock replaces this project's former `note-lock` plugin ID. Disable the old plugin before installing this version; do not enable both copies. Preserve its `data.json` in the new `page-lock` folder and update command hotkeys to the new prefix. The `locked` frontmatter property is unchanged, so existing locked notes stay locked.
+
+For an existing installation of Robert Fleming's Note Lock, close Obsidian and run `python3 scripts/migrate-install.py /path/to/vault` from the source repository before deploying Page Lock. The script backs up the old installation and preserves settings, enabled state, and command hotkeys. Restart Obsidian afterward. This migration is not for the unrelated community plugin also named Note Lock.
+
+The screenshots were captured before the rename and still show the former name; the locking interface is unchanged.
+
 ## Installation
 
 ### Community Plugins
 
-Once accepted, install **Note Lock** from **Settings → Community plugins → Browse**.
+Once accepted, install **Page Lock** from **Settings → Community plugins → Browse**.
 
 ### Manual installation
 
 Copy `main.js`, `manifest.json`, and `styles.css` from a release into:
 
 ```text
-<vault>/.obsidian/plugins/note-lock/
+<vault>/.obsidian/plugins/page-lock/
 ```
 
-Then reload Obsidian and enable **Note Lock** under Community plugins.
+Then reload Obsidian and enable **Page Lock** under Community plugins.
 
 ## Development
 
@@ -149,7 +157,7 @@ pull request, run `npm run build` and `npm run lint`.
 
 ## Support
 
-If Note Lock improves your workflow, you can support its continued development on
+If Page Lock improves your workflow, you can support its continued development on
 [Buy Me a Coffee](https://www.buymeacoffee.com/robertfleming).
 
 ## Acknowledgements

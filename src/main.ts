@@ -310,8 +310,8 @@ export default class NoteLockPlugin extends Plugin {
       new Notice(locked ? `Locked "${file.basename}"` : `Unlocked "${file.basename}"`);
     } catch (error) {
       this.lockStates.delete(file.path);
-      new Notice(`Note Lock: could not update "${file.basename}"`);
-      console.error('Note Lock: failed to update frontmatter', error);
+      new Notice(`Page Lock: could not update "${file.basename}"`);
+      console.error('Page Lock: failed to update frontmatter', error);
     } finally {
       this.bypassPath = null;
     }
@@ -377,7 +377,7 @@ export default class NoteLockPlugin extends Plugin {
       if (this.isGuarded(file)) {
         if (data === await vault.cachedRead(file)) return;
         this.notifyBlocked(file);
-        throw new Error(`Note Lock: "${file.path}" is locked`);
+        throw new Error(`Page Lock: "${file.path}" is locked`);
       }
       return originalModify(file, data, options);
     };
@@ -390,7 +390,7 @@ export default class NoteLockPlugin extends Plugin {
         const result = fn(current);
         if (result === current) return result;
         this.notifyBlocked(file);
-        throw new Error(`Note Lock: "${file.path}" is locked`);
+        throw new Error(`Page Lock: "${file.path}" is locked`);
       }
       return originalProcess(file, fn, options);
     };
@@ -416,7 +416,7 @@ export default class NoteLockPlugin extends Plugin {
   private guardRejection(file: TFile): Promise<never> | null {
     if (!this.isGuarded(file)) return null;
     this.notifyBlocked(file);
-    return Promise.reject(new Error(`Note Lock: "${file.path}" is locked`));
+    return Promise.reject(new Error(`Page Lock: "${file.path}" is locked`));
   }
 
   private notifyBlocked(file: TFile): void {

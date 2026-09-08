@@ -3,3 +3,6 @@ node_modules/
 *.log
 .DS_Store
 /data.json
+
+__pycache__/
+*.pyc
