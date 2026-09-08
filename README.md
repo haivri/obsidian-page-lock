@@ -1,13 +1,32 @@
 # Note Lock
 
-<a href="https://www.buymeacoffee.com/robertfleming"><img src="assets/buy-me-a-coffee.png" alt="Buy me a coffee" width="217"></a>
-
 Lock a note so it cannot be edited until you unlock it — like Notion's "lock page", but for
 Obsidian. A locked note shows a lock icon in the view header and an optional slim banner; unlock with a
 click, a command, or the file menu.
 
 Note Lock is deliberately small and local-first. It does not collect telemetry or make network
 requests. The only thing it ever writes to a note is the lock property itself.
+
+## Features
+
+- Locks a note against every edit: typing, paste, drag-and-drop, cut, and undo are all blocked
+  in Live Preview and Source mode.
+- Blocks rendered task checkboxes, Meta Bind fields/buttons, and property controls in
+  Reading view and Live Preview, while keeping note links and unlocking available.
+- Blocks writes from other plugins too (Templater, linters, formatters) while a note is locked.
+- Stores the lock as a frontmatter property (`locked: true` by default), so it syncs to your
+  other devices along with the note itself.
+- Locks the inline title too, so a locked note cannot be renamed from the editor.
+- Theme-aware pill banner at the top of the editor with a one-click/tap unlock.
+- Lock/unlock icon in the view header of every note — an open lock to lock, a closed lock to
+  unlock — visible in Reading view too.
+- Reading view stays completely clean: no banner, so PDF exports are untouched.
+- Lock or unlock via the command palette (hotkeyable), the file menu / three-dots menu, the
+  banner, or the view-header icon.
+- Works on desktop and mobile; the keyboard does not pop up on a locked note.
+- Optional confirmation prompt before unlocking.
+
+<a href="https://www.buymeacoffee.com/robertfleming"><img src="assets/buy-me-a-coffee.png" alt="Buy me a coffee" width="217"></a>
 
 ## See it in action
 
@@ -42,25 +61,6 @@ Hide the banner while keeping protection active, and require confirmation before
 <p align="center">
   <img src="screenshots/04-settings.png" alt="Hide the banner while keeping protection active, and require confirmation before unlocking." width="900">
 </p>
-
-## Features
-
-- Locks a note against every edit: typing, paste, drag-and-drop, cut, and undo are all blocked
-  in Live Preview and Source mode.
-- Blocks rendered task checkboxes, Meta Bind fields/buttons, and property controls in
-  Reading view and Live Preview, while keeping note links and unlocking available.
-- Blocks writes from other plugins too (Templater, linters, formatters) while a note is locked.
-- Stores the lock as a frontmatter property (`locked: true` by default), so it syncs to your
-  other devices along with the note itself.
-- Locks the inline title too, so a locked note cannot be renamed from the editor.
-- Theme-aware pill banner at the top of the editor with a one-click/tap unlock.
-- Lock/unlock icon in the view header of every note — an open lock to lock, a closed lock to
-  unlock — visible in Reading view too.
-- Reading view stays completely clean: no banner, so PDF exports are untouched.
-- Lock or unlock via the command palette (hotkeyable), the file menu / three-dots menu, the
-  banner, or the view-header icon.
-- Works on desktop and mobile; the keyboard does not pop up on a locked note.
-- Optional confirmation prompt before unlocking.
 
 ## Usage
 
