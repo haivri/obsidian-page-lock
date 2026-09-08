@@ -1,11 +1,47 @@
 # Note Lock
 
+<a href="https://www.buymeacoffee.com/robertfleming"><img src="assets/buy-me-a-coffee.png" alt="Buy me a coffee" width="217"></a>
+
 Lock a note so it cannot be edited until you unlock it — like Notion's "lock page", but for
-Obsidian. A locked note shows a slim banner and a lock icon in the view header; unlock with a
+Obsidian. A locked note shows a lock icon in the view header and an optional slim banner; unlock with a
 click, a command, or the file menu.
 
 Note Lock is deliberately small and local-first. It does not collect telemetry or make network
 requests. The only thing it ever writes to a note is the lock property itself.
+
+## See it in action
+
+### Notion-style page locking
+
+Keep a routine protected against accidental edits, with the lock available in the note header.
+
+<p align="center">
+  <img src="screenshots/01-notion-style-lock.png" alt="Keep a routine protected against accidental edits, with the lock available in the note header." width="900">
+</p>
+
+### A clean mobile note
+
+The header lock remains visible below the status area, with the optional banner hidden.
+
+<p align="center">
+  <img src="screenshots/02-mobile-lock.png" alt="The header lock remains visible below the status area, with the optional banner hidden." width="380">
+</p>
+
+### An optional unlock banner
+
+Show a visible unlock reminder above the note when you want it.
+
+<p align="center">
+  <img src="screenshots/03-banner-optional.png" alt="Show a visible unlock reminder above the note when you want it." width="900">
+</p>
+
+### Choose how locking looks
+
+Hide the banner while keeping protection active, and require confirmation before unlocking.
+
+<p align="center">
+  <img src="screenshots/04-settings.png" alt="Hide the banner while keeping protection active, and require confirmation before unlocking." width="900">
+</p>
 
 ## Features
 
@@ -116,6 +152,18 @@ pull request, run `npm run build` and `npm run lint`.
 If Note Lock improves your workflow, you can support its continued development on
 [Buy Me a Coffee](https://www.buymeacoffee.com/robertfleming).
 
+## Acknowledgements
+
+Robert Fleming directed and reviewed this work. Recent refinements, documentation, and screenshot preparation were developed in collaboration with OpenAI Codex, powered by GPT-6. Thank you to the AI collaborators who helped bring these ideas into a usable community plugin.
+
 ## License
 
 MIT
+
+## Screenshot demo
+
+A [ready-to-use screenshot kit](bootstrap/README.md) includes demo notes and capture instructions.
+
+## Feedback
+
+Bug reports are welcome in this repository’s issue tracker when available. Include your Obsidian and plugin versions, desktop or mobile, a short reproduction, and expected versus actual behavior. Use a small sample note without personal content. This is a spare-time project; fixes and replies have no guaranteed schedule. Contributions and forks are welcome; donations are optional.
