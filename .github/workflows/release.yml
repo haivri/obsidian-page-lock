@@ -18,7 +18,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install dependencies
@@ -33,6 +33,12 @@ jobs:
             exit 1
           fi
 
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
       - name: Build
         run: npm run build
 
@@ -43,4 +49,5 @@ jobs:
             main.js
             manifest.json
             styles.css
+          fail_on_unmatched_files: true
           generate_release_notes: true
