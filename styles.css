@@ -8,7 +8,7 @@
 .note-lock-images-locked .simple-gallery-item-menu,
 .note-lock-images-locked .simple-gallery-settings-button,
 .note-lock-images-locked .simple-gallery-section-remove {
-  display: none;
+  display: none !important;
 }
 
 .markdown-source-view.note-lock-has-banner {
