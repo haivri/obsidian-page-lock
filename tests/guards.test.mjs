@@ -117,6 +117,31 @@ for (const locked of [true, false]) {
   });
 }
 
+test('locked images block display mutations before handlers run while viewing stays available', () => {
+  const { plugin, file } = setup();
+  const dom = new JSDOM('<main><div class="image-embed"><img width="240"><div class="image-resize-corner"></div><button class="ik-edit-btn"></button><div class="edit-block-button"></div><div class="embed-action zoom"></div></div><figure class="simple-gallery-item"><img><button class="simple-gallery-item-menu"></button><figcaption class="simple-gallery-caption">Caption</figcaption></figure></main>');
+  const { document, Event, KeyboardEvent } = dom.window;
+  const view = { file, contentEl: document.querySelector('main') };
+  plugin.installControlGuard(view);
+  const img = document.querySelector('img');
+  const corner = document.querySelector('.image-resize-corner');
+  corner.addEventListener('pointerdown', () => img.setAttribute('width', '500'));
+  const fire = (el, type) => el.dispatchEvent(new Event(type, { bubbles: true, cancelable: true }));
+  for (const selector of ['.image-resize-corner', '.ik-edit-btn', '.edit-block-button', '.simple-gallery-item-menu', '.simple-gallery-caption']) {
+    for (const type of ['pointerdown', 'mousedown', 'touchstart', 'click']) assert.equal(fire(document.querySelector(selector), type), false);
+  }
+  assert.equal(img.getAttribute('width'), '240');
+  for (const type of ['dragstart', 'drop', 'contextmenu', 'dblclick']) assert.equal(fire(img, type), false);
+  assert.equal(img.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })), false);
+  assert.equal(fire(img, 'click'), true);
+  assert.equal(fire(document.querySelector('.zoom'), 'click'), true);
+  plugin.lockStates.set(file.path, false);
+  assert.equal(fire(corner, 'pointerdown'), true);
+  assert.equal(img.getAttribute('width'), '500');
+  for (const cleanup of plugin.cleanups) cleanup();
+  dom.window.close();
+});
+
 test('mobile banner uses the note inset without moving the toolbar and disappears on unlock', () => {
   const { plugin, file } = setup();
   const dom = new JSDOM('<main><header>Toolbar</header><section><div class="markdown-source-view"><div class="cm-editor"><div class="cm-scroller"><div class="cm-sizer"><div class="inline-title">Title</div><div class="cm-content">Note</div></div></div></div></div></section></main>');

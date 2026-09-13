@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.2 - 2026-09-12
+
+- Block native image resizing before it changes the displayed size.
+- Protect image edit buttons, keyboard resizing, drag/drop, and image context menus.
+- Protect Simple Gallery editing controls while retaining image viewing.
+- Hide image editing affordances while a note is locked; restore them on unlock.
+
 ## 1.1.0 - 2026-09-07
 
 - Added Show locked-note banner in plugin settings. Disable it to remove the banner and its spacing while retaining the header lock icon, title protection, and all edit/write guards. Changes apply immediately to open notes.

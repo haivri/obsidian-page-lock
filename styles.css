@@ -1,6 +1,16 @@
 /* Note Lock — all selectors prefixed with note-lock-; colors come from
    Obsidian theme variables so light/dark and community themes both work. */
 
+/* Keep viewing controls available; editing affordances return on unlock. */
+.note-lock-images-locked .image-resize-corner,
+.note-lock-images-locked .image-embed .edit-block-button,
+.note-lock-images-locked .ik-edit-btn,
+.note-lock-images-locked .simple-gallery-item-menu,
+.note-lock-images-locked .simple-gallery-settings-button,
+.note-lock-images-locked .simple-gallery-section-remove {
+  display: none;
+}
+
 .markdown-source-view.note-lock-has-banner {
   display: flex;
   flex-direction: column;

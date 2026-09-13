@@ -451,6 +451,9 @@ export default class NoteLockPlugin extends Plugin {
       if (!target || typeof target.closest !== 'function') return;
       if (target.closest(`.${BANNER_CLASS}, .${ACTION_CLASS}`)) return;
       const control = target.closest([
+        '.image-resize-corner', '.image-embed .edit-block-button', '.ik-edit-btn',
+        '.simple-gallery-item-menu', '.simple-gallery-settings-button',
+        '.simple-gallery-caption', '.simple-gallery-section-title', '.simple-gallery-section-remove',
         'input', 'textarea', 'select',
         '[role="checkbox"]', '[role="switch"]', '[role="slider"]',
         '[role="spinbutton"]', '[role="combobox"]',
@@ -461,9 +464,13 @@ export default class NoteLockPlugin extends Plugin {
       ].join(', '));
       // Clicking an associated label activates its input too.
       const label = target.closest('label');
-      if (!control && !label?.control) return;
+      const image = target.closest('.image-embed, .simple-gallery-item');
+      const imageGesture = image && ['dragstart', 'drop', 'cut', 'contextmenu', 'dblclick'].includes(event.type);
+      const imageKey = image && event.type === 'keydown' &&
+        ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Backspace', 'Delete', 'Enter', 'F2'].includes((event as KeyboardEvent).key);
+      if (!control && !label?.control && !imageGesture && !imageKey) return;
       let file = view.file;
-      const embed = target.closest('.internal-embed[src]');
+      const embed = target.closest('.internal-embed:not(.image-embed)[src]');
       const source = embed?.getAttribute('src');
       if (source && file) {
         const embeddedFile = this.app.metadataCache.getFirstLinkpathDest(source.split('#')[0], file.path);
@@ -484,13 +491,14 @@ export default class NoteLockPlugin extends Plugin {
     // Capture on the view, before native checkbox activation, Meta Bind's
     // handlers, and CodeMirror widgets. Delegation covers subsequent renders.
     for (const name of ['pointerdown', 'mousedown', 'touchstart', 'click', 'dblclick',
-      'keydown', 'beforeinput', 'input', 'change', 'paste', 'cut', 'drop']) {
+      'keydown', 'beforeinput', 'input', 'change', 'paste', 'cut', 'drop', 'dragstart', 'contextmenu']) {
       this.registerDomEvent(view.contentEl, name as keyof HTMLElementEventMap, intercept,
         { capture: true, passive: false });
     }
   }
 
   private clearViewDecorations(view: MarkdownView): void {
+    view.contentEl.classList.remove('note-lock-images-locked');
     view.contentEl.querySelectorAll(`.${BANNER_CLASS}`).forEach((el) => el.remove());
     view.containerEl.querySelectorAll(`.${ACTION_CLASS}`).forEach((el) => el.remove());
     view.contentEl.querySelector<HTMLElement>('.markdown-source-view')
@@ -507,6 +515,7 @@ export default class NoteLockPlugin extends Plugin {
     const file = view.file;
     if (!file || file.extension !== 'md') return;
     const locked = this.isFileLocked(file);
+    view.contentEl.classList.toggle('note-lock-images-locked', locked);
 
     const cm = (view.editor as unknown as { cm?: EditorView }).cm;
     if (cm && cm.state.field(this.lockedField, false) !== locked) {
