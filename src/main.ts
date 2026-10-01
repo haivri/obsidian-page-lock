@@ -14,6 +14,7 @@ import {
 } from 'obsidian';
 import { Annotation, EditorState, Prec, StateEffect, StateField, Transaction } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
+import { applyLinkUpdates, LinkUpdateBatch } from './link-updates';
 
 /** Marks note-lock's own editor re-sync transactions so the filter lets them through. */
 const reloadAnnotation = Annotation.define<boolean>();
@@ -24,12 +25,14 @@ interface NoteLockSettings {
   propertyName: string;
   confirmUnlock: boolean;
   showLockBanner: boolean;
+  allowLinkUpdates: boolean;
 }
 
 const DEFAULT_SETTINGS: NoteLockSettings = {
   propertyName: 'locked',
   confirmUnlock: false,
-  showLockBanner: true
+  showLockBanner: true,
+  allowLinkUpdates: true
 };
 
 // --- Constants --------------------------------------------------------------
@@ -44,6 +47,7 @@ const PROPERTY_NAME_DESC =
   'Frontmatter property that marks a note as locked. The lock travels with the note, ' +
   'so it syncs to other devices. Existing notes keep any previously used property.';
 const BANNER_DESC = 'Show the locked-note banner above the note. Turn off to use only the header lock icon; editing protection stays active.';
+const LINK_UPDATES_DESC = 'Allow Obsidian to update links in locked notes when linked files are renamed or moved. Only the affected links change; other edits stay blocked. Turn off to keep those links unchanged.';
 
 const CONFIRM_DESC =
   'Ask for confirmation before unlocking a note, preventing accidental unlocks from a stray tap.';
@@ -366,6 +370,7 @@ export default class NoteLockPlugin extends Plugin {
     const originalModify = vault.modify.bind(vault);
     const originalAppend = vault.append.bind(vault);
     const originalProcess = vault.process.bind(vault);
+    this.installLinkUpdateHandler(originalProcess);
     const fileManager = this.app.fileManager;
     const originalFrontMatter = fileManager.processFrontMatter.bind(fileManager);
     const guard = (file: TFile): Promise<never> | null => this.guardRejection(file);
@@ -405,6 +410,47 @@ export default class NoteLockPlugin extends Plugin {
       vault.modify = originalModify;
       vault.append = originalAppend;
       vault.process = originalProcess;
+    });
+  }
+
+  private installLinkUpdateHandler(process: App['vault']['process']): void {
+    // Obsidian exposes no public rename-replacement event. This internal hook
+    // receives the exact reference replacements, after its update-links prompt.
+    // Feature-detect it: unknown versions retain full write protection.
+    const cache = this.app.metadataCache as App['metadataCache'] & {
+      updateInternalLinks?: (updates: LinkUpdateBatch) => Promise<void>;
+    };
+    const original = cache.updateInternalLinks;
+    if (typeof original !== 'function') return;
+    const handler = async (updates: LinkUpdateBatch): Promise<void> => {
+      const remaining: string[] = [];
+      for (const path of updates.keys()) {
+        const file = this.app.vault.getAbstractFileByPath(path);
+        if (!(file instanceof TFile) || !this.isGuarded(file)) {
+          remaining.push(path);
+          continue;
+        }
+        if (!this.settings.allowLinkUpdates) continue;
+        const replacements = updates.get(path);
+        // Use the original atomic process method with our own constrained
+        // transform. Never unlock the note or bypass guards for other callers.
+        await process(file, (content) => {
+          if (!this.settings.allowLinkUpdates) return content;
+          const result = applyLinkUpdates(content, replacements);
+          if (result === null) {
+            new Notice(`Page Lock: links in "${file.basename}" changed before the rename could update them; the note was left unchanged.`);
+            return content;
+          }
+          return result;
+        });
+      }
+      if (remaining.length) {
+        await original.call(cache, { keys: () => remaining, get: (path) => updates.get(path) });
+      }
+    };
+    cache.updateInternalLinks = handler;
+    this.register(() => {
+      if (cache.updateInternalLinks === handler) cache.updateInternalLinks = original;
     });
   }
 
@@ -601,6 +647,12 @@ class NoteLockSettingTab extends PluginSettingTab {
         control: { type: 'toggle', key: 'showLockBanner', defaultValue: DEFAULT_SETTINGS.showLockBanner }
       },
       {
+        name: 'Allow automatic link updates',
+        desc: LINK_UPDATES_DESC,
+        aliases: ['rename', 'move', 'links', 'references'],
+        control: { type: 'toggle', key: 'allowLinkUpdates', defaultValue: DEFAULT_SETTINGS.allowLinkUpdates }
+      },
+      {
         name: 'Confirm before unlocking',
         desc: CONFIRM_DESC,
         aliases: ['confirmation', 'accidental unlock'],
@@ -617,6 +669,7 @@ class NoteLockSettingTab extends PluginSettingTab {
     switch (key) {
       case 'propertyName': return this.plugin.settings.propertyName;
       case 'showLockBanner': return this.plugin.settings.showLockBanner;
+      case 'allowLinkUpdates': return this.plugin.settings.allowLinkUpdates;
       case 'confirmUnlock': return this.plugin.settings.confirmUnlock;
       default: return undefined;
     }
@@ -636,6 +689,11 @@ class NoteLockSettingTab extends PluginSettingTab {
       case 'confirmUnlock':
         if (typeof value !== 'boolean') return;
         this.plugin.settings.confirmUnlock = value;
+        await this.plugin.saveSettings();
+        return;
+      case 'allowLinkUpdates':
+        if (typeof value !== 'boolean') return;
+        this.plugin.settings.allowLinkUpdates = value;
         await this.plugin.saveSettings();
         return;
     }
@@ -675,6 +733,15 @@ class NoteLockSettingTab extends PluginSettingTab {
         .setValue(this.plugin.settings.showLockBanner)
         .onChange(async (value) => {
           await this.setControlValue('showLockBanner', value);
+        }));
+
+    new Setting(containerEl)
+      .setName('Allow automatic link updates')
+      .setDesc(LINK_UPDATES_DESC)
+      .addToggle((toggle) => toggle
+        .setValue(this.plugin.settings.allowLinkUpdates)
+        .onChange(async (value) => {
+          await this.setControlValue('allowLinkUpdates', value);
         }));
 
     new Setting(containerEl)

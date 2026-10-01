@@ -26,3 +26,10 @@
   `fileManager.processFrontMatter`. Rendered controls are guarded at the view capture phase. The adapter is deliberately
   untouched so Obsidian Sync and external tools can always update locked files.
 - `workspace.updateOptions()` is expensive; call it only on actual lock flips.
+- Automatic link updates intercept the feature-detected internal
+  `metadataCache.updateInternalLinks` batch. Locked notes use the captured atomic
+  `vault.process` with only verified reference replacements; no temporary unlock,
+  bypass flag, or broad permission window. Other files retain the native updater.
+- `src/link-updates.ts` must preserve everything outside those references,
+  including YAML comments and whitespace. Fail closed on stale/overlapping
+  references. The setting defaults on and an explicit opt-out must survive loads.

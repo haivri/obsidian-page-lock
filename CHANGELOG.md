@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.0 - 2026-10-01
+
+- Add **Allow automatic link updates**, enabled by default for new and existing installations.
+- Keep references in locked notes current after Obsidian renames or moves linked files, while
+  preserving the lock and blocking unrelated edits. Turning the setting off keeps locked links unchanged.
+- Support body links, embeds, and property links without reformatting the surrounding note or YAML.
+- Reject stale reference replacements without partial edits; keep ordinary writes blocked during updates.
+- Add regression coverage for defaults, opt-out, link variants, property formatting, concurrent writes,
+  stale references, and hook cleanup. Minimum Obsidian version is now 1.5.7.
+
 ## 1.1.2 - 2026-09-12
 
 - Block native image resizing before it changes the displayed size.

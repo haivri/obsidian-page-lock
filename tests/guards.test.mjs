@@ -19,6 +19,12 @@ class Plugin {
   }
 }
 const obsidian = { Plugin, TFile, Modal: class {}, PluginSettingTab: class {}, Notice: class {} };
+obsidian.getFrontMatterInfo = (content) => {
+  const match = /^(---\r?\n)([\s\S]*?)(^---(?:\r?\n|$))/m.exec(content);
+  if (!match || match.index !== 0) return { exists: false, contentStart: 0 };
+  return { exists: true, from: match[1].length, to: match[1].length + match[2].length,
+    contentStart: match[0].length, frontmatter: match[2] };
+};
 const module = { exports: {} };
 runInNewContext(readFileSync(new URL('../main.js', import.meta.url), 'utf8'), {
   module, exports: module.exports,
@@ -26,6 +32,174 @@ runInNewContext(readFileSync(new URL('../main.js', import.meta.url), 'utf8'), {
   console, Date, window: {},
 });
 const NoteLock = module.exports.default;
+
+function renameSetup(content, options = {}) {
+  const { plugin, file } = setup();
+  plugin.settings = { ...plugin.settings, ...options };
+  const unlocked = new TFile('unlocked.md');
+  const contents = new Map([[file.path, content], [unlocked.path, '[[Old]]']]);
+  const delegated = [];
+  const cache = plugin.app.metadataCache;
+  cache.getFileCache = (f) => ({ frontmatter: { locked: f === file } });
+  const vault = plugin.app.vault;
+  vault.getAbstractFileByPath = (path) => [file, unlocked].find((f) => f.path === path);
+  vault.cachedRead = async (f) => contents.get(f.path);
+  vault.process = async (f, fn) => {
+    const next = fn(contents.get(f.path));
+    contents.set(f.path, next);
+    return next;
+  };
+  cache.updateInternalLinks = async (batch) => {
+    for (const path of batch.keys()) {
+      delegated.push(path);
+      await vault.process(vault.getAbstractFileByPath(path), (text) => {
+        for (const { reference: { original }, change } of batch.get(path)) text = text.replace(original, change);
+        return text;
+      });
+    }
+  };
+  const original = cache.updateInternalLinks;
+  plugin.installVaultGuard();
+  const run = (updates, extra = []) => cache.updateInternalLinks(new Map([[file.path, updates], ...extra]));
+  return { plugin, file, unlocked, vault, cache, contents, delegated, run, original };
+}
+
+function linkReplacement(content, original, change, from = 0) {
+  const offset = content.indexOf(original, from);
+  assert.ok(offset >= 0);
+  return { reference: { original, position: { start: { offset }, end: { offset: offset + original.length } } }, change };
+}
+
+test('existing installations enable link updates by default and retain an explicit opt-out', async () => {
+  const plugin = new NoteLock();
+  plugin.loadData = async () => ({ propertyName: 'protected', showLockBanner: false });
+  await plugin.loadSettings();
+  assert.equal(plugin.settings.allowLinkUpdates, true);
+  assert.equal(plugin.settings.propertyName, 'protected');
+  assert.equal(plugin.settings.showLockBanner, false);
+  plugin.loadData = async () => ({ allowLinkUpdates: false });
+  await plugin.loadSettings();
+  assert.equal(plugin.settings.allowLinkUpdates, false);
+});
+
+test('native rename updates only planned wikilinks, embeds, Markdown links and references', async () => {
+  const content = '---\nlocked: true\n---\n# Keep heading\n[[Old]] [[Old#Heading|My alias]] ![[Old#^block]]\n[Old](Old.md) ![photo](Old%20image.png)\n[ref]: Old.md\n- [ ] Keep task\nOld prose and `[[Old]]` stay.\n';
+  const pairs = [
+    ['[[Old]]', '[[New]]'], ['[[Old#Heading|My alias]]', '[[New#Heading|My alias]]'],
+    ['![[Old#^block]]', '![[New#^block]]'], ['[Old](Old.md)', '[New](New.md)'],
+    ['![photo](Old%20image.png)', '![photo](New%20image.png)'], ['[ref]: Old.md', '[ref]: New.md'],
+  ];
+  const { run, contents, file, plugin, vault } = renameSetup(content);
+  await run(pairs.map(([before, after]) => linkReplacement(content, before, after)));
+  assert.equal(contents.get(file.path), pairs.reduce((text, [before, after]) => text.replace(before, after), content));
+  assert.equal(plugin.isFileLocked(file), true);
+  await assert.rejects(vault.modify(file, content + 'unrelated'), /locked/);
+  await assert.rejects(vault.process(file, (text) => text.replace('Keep task', 'Changed task')), /locked/);
+  await assert.rejects(plugin.app.fileManager.processFrontMatter(file, () => {}), /locked/);
+});
+
+test('property link replacements preserve other YAML, comments, whitespace, CRLF and body', async () => {
+  const content = '---\r\nlocked: true # keep\r\nrelated: \'[[Old]]\' # link\r\nlist: ["[[Old#Heading|Alias]]", untouched]\r\nnested:\r\n  link: "[[Old]]"\r\nother:   "keep quotes"\r\n---\r\nBody [[Old]]\r\n';
+  const { run, contents, file } = renameSetup(content);
+  await run([
+    { reference: { key: 'related', original: '[[Old]]' }, change: '[[New]]' },
+    { reference: { key: 'list.0', original: '[[Old#Heading|Alias]]' }, change: '[[New#Heading|Alias]]' },
+    { reference: { key: 'nested.link', original: '[[Old]]' }, change: '[[New]]' },
+    linkReplacement(content, '[[Old]]', '[[New]]', content.indexOf('Body')),
+  ]);
+  assert.equal(contents.get(file.path), content.replace("'[[Old]]'", '"[[New]]"')
+    .replace('[[Old#Heading|Alias]]', '[[New#Heading|Alias]]')
+    .replace('link: "[[Old]]"', 'link: "[[New]]"').replace('Body [[Old]]', 'Body [[New]]'));
+});
+
+test('property block scalars keep the following line separate', async () => {
+  const content = '---\nlocked: true\nrelated: >-\n  [[Old]]\nkeep: true\n---\nBody';
+  const { run, contents, file } = renameSetup(content);
+  await run([{ reference: { key: 'related', original: '[[Old]]' }, change: '[[New]]' }]);
+  assert.equal(contents.get(file.path), content.replace('>-\n  [[Old]]\n', '"[[New]]"\n'));
+});
+
+test('opt-out skips locked links but still updates unlocked notes in the same batch', async () => {
+  const { run, contents, file, unlocked, delegated } = renameSetup('[[Old]]', { allowLinkUpdates: false });
+  const updates = [linkReplacement('[[Old]]', '[[Old]]', '[[New]]')];
+  await run(updates, [[unlocked.path, updates]]);
+  assert.equal(contents.get(file.path), '[[Old]]');
+  assert.equal(contents.get(unlocked.path), '[[New]]');
+  assert.deepEqual(delegated, [unlocked.path]);
+});
+
+test('stale or overlapping references fail without partial changes', async () => {
+  for (const content of ['[[Old]] keep [[Second]]', '---\nlocked: true\nrelated: "[[Other]]"\n---\n[[Old]]']) {
+    const { run, contents, file } = renameSetup(content);
+    const valid = linkReplacement(content, '[[Old]]', '[[New]]');
+    const invalid = content.startsWith('---')
+      ? { reference: { key: 'related', original: '[[Old]]' }, change: '[[New]]' }
+      : { reference: { original: '[[Second]]', position: { start: { offset: 0 }, end: { offset: 10 } } }, change: '[[New]]' };
+    await run([valid, invalid]);
+    assert.equal(contents.get(file.path), content);
+    await run([valid, valid]);
+    assert.equal(contents.get(file.path), content);
+  }
+});
+
+test('concurrent edits stay blocked while a native link update is pending; unload restores hook', async () => {
+  const { plugin, vault, cache, original, file, contents, run } = renameSetup('[[Old]]');
+  // Delay the trusted atomic process independently of the public guarded API.
+  let resume;
+  let began;
+  const started = new Promise((resolve) => { began = resolve; });
+  for (const cleanup of plugin.cleanups) cleanup();
+  plugin.cleanups = [];
+  const atomic = vault.process;
+  vault.process = async (...args) => {
+    began();
+    await new Promise((resolve) => { resume = resolve; });
+    return atomic(...args);
+  };
+  plugin.installVaultGuard();
+  const pending = run([linkReplacement('[[Old]]', '[[Old]]', '[[New]]')]);
+  await started;
+  await assert.rejects(vault.modify(file, 'unrelated'), /locked/);
+  await assert.rejects(vault.process(file, () => 'unrelated'), /locked/);
+  await assert.rejects(vault.append(file, 'unrelated'), /locked/);
+  resume();
+  await pending;
+  assert.equal(contents.get(file.path), '[[New]]');
+  for (const cleanup of plugin.cleanups) cleanup();
+  assert.equal(cache.updateInternalLinks, original);
+});
+
+test('external changes before the atomic update do not get overwritten', async () => {
+  const { run, contents, file } = renameSetup('[[Old]]');
+  const update = linkReplacement('[[Old]]', '[[Old]]', '[[New]]');
+  contents.set(file.path, 'External prefix [[Old]]');
+  await run([update]);
+  assert.equal(contents.get(file.path), 'External prefix [[Old]]');
+});
+
+test('opt-out applies immediately and can be turned back on without unlocking', async () => {
+  const { plugin, run, contents, file } = renameSetup('[[Old]]');
+  const updates = [linkReplacement('[[Old]]', '[[Old]]', '[[New]]')];
+  plugin.settings.allowLinkUpdates = false;
+  await run(updates);
+  assert.equal(contents.get(file.path), '[[Old]]');
+  plugin.settings.allowLinkUpdates = true;
+  await run(updates);
+  assert.equal(contents.get(file.path), '[[New]]');
+  assert.equal(plugin.isFileLocked(file), true);
+});
+
+test('ambiguous property paths and invalid YAML leave the entire note unchanged', async () => {
+  for (const content of [
+    '---\nlocked: true\nrelated: "[[Old]]"\nrelated: other\n---\n[[Old]]',
+    '---\nlocked: true\nrelated: [broken\n---\n[[Old]]',
+    '---\nlocked: true\n"related.link": "[[Old]]"\n---\n[[Old]]',
+  ]) {
+    const { run, contents, file } = renameSetup(content);
+    await run([{ reference: { key: content.includes('related.link') ? 'related.link' : 'related', original: '[[Old]]' }, change: '[[New]]' }]);
+    assert.equal(contents.get(file.path), content);
+  }
+});
 
 function setup(locked = true) {
   const plugin = new NoteLock();

@@ -5,7 +5,8 @@ Obsidian. A locked note shows a lock icon in the view header and an optional sli
 click, a command, or the file menu.
 
 Page Lock is deliberately small and local-first. It does not collect telemetry or make network
-requests. The only thing it ever writes to a note is the lock property itself.
+requests. It writes the lock property and, by default, lets Obsidian's automatic link updates
+keep references current when files are renamed or moved.
 
 ## Features
 
@@ -14,6 +15,8 @@ requests. The only thing it ever writes to a note is the lock property itself.
 - Blocks rendered task checkboxes, Meta Bind fields/buttons, and property controls in
   Reading view and Live Preview, while keeping note links and unlocking available.
 - Blocks writes from other plugins too (Templater, linters, formatters) while a note is locked.
+- Allows automatic link updates after file renames or moves, without unlocking the note or
+  allowing unrelated changes. This can be disabled in settings.
 - Stores the lock as a frontmatter property (`locked: true` by default), so it syncs to your
   other devices along with the note itself.
 - Locks the inline title too, so a locked note cannot be renamed from the editor.
@@ -79,6 +82,10 @@ The lock lives in the note's frontmatter (default property: `locked`). While it 
 - The editor becomes read-only at the CodeMirror level, so no edit can reach the document.
 - Frontmatter writes are checked before a plugin’s callback can change metadata.
 - Obsidian's file-write API refuses changes to the note from any plugin, with a notice.
+- Automatic link updates apply only Obsidian's calculated reference replacements. Note text,
+  task states, unrelated properties, and surrounding formatting stay unchanged. Wikilinks,
+  Markdown links, embeds, and property links are supported. Obsidian's own update-links
+  preference or confirmation still controls whether a rename triggers updates.
 - Sync and external tools can still update the file — locking protects against edits inside
   Obsidian, not against your sync service.
 
@@ -97,8 +104,16 @@ windows, and embedded editors. Canvas files and other non-markdown files are not
 
 - **Lock property name** — the frontmatter property that marks a note as locked
   (default `locked`).
+- **Allow automatic link updates** — update references in locked notes when linked files
+  are renamed or moved (default on, including existing installations). Turn off to keep those
+  links unchanged while locked. This does not allow manual link edits or unlock the note.
 - **Confirm before unlocking** — ask before unlocking, preventing accidental unlocks from a
   stray tap (default off).
+
+Automatic link updates use a feature-detected Obsidian internal hook. If a future version
+removes that hook, the note remains protected and automatic updates stay blocked. If reference
+positions or property values changed before an update, Page Lock leaves that note unchanged
+and shows a notice rather than risk changing unrelated content. Requires Obsidian 1.5.7 or newer.
 
 ## Migrating from Note Lock
 
