@@ -75,3 +75,17 @@ body.is-mobile .note-lock-banner {
 body.is-mobile .note-lock-banner-fallback {
   margin-top: max(10px, env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
 }
+
+/* Keep locked content selectable so users can still copy text out of a locked
+   note. While locked, cm-content and the inline title are not editing hosts
+   (`contenteditable="false"`), so Obsidian's `body { user-select: none }`
+   applies and the browser refuses to create a selection at all. Restoring
+   `user-select: text` re-enables native selection and Ctrl+C; write protection
+   is untouched. Scoped to the plugin's own lock marker, which is present only
+   while a note is locked. Highlight color follows Obsidian's existing global
+   `::selection { background-color: var(--text-selection) }`. */
+.view-content.note-lock-images-locked .cm-content[contenteditable="false"],
+.view-content.note-lock-images-locked .inline-title[contenteditable="false"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
