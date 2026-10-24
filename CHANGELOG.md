@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Allow selecting and copying text in locked notes (Live Preview and Source mode). The lock now
+  sets `user-select: text` on locked editor content, restoring the native selection highlight that
+  Obsidian's global `user-select: none` suppresses once content stops being an editing host. Write
+  protection is unchanged.
+
 ## 1.2.0 - 2026-10-01
 
 - Add **Allow automatic link updates**, enabled by default for new and existing installations.
