@@ -76,8 +76,10 @@ body.is-mobile .note-lock-banner-fallback {
   margin-top: max(10px, env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
 }
 
-/* Locked editors remain selectable without becoming editing hosts. */
-.cm-content[data-page-lock="true"] {
+/* Locked editors and YAML Properties' separate read-only preview remain
+   selectable without becoming editing hosts. Keep property controls guarded. */
+.cm-content[data-page-lock="true"],
+.note-lock-images-locked .yaml-properties-yaml-readonly {
   user-select: text;
   -webkit-user-select: text;
 }

@@ -6,6 +6,10 @@ export class Plugin {
   register(fn) { this.cleanups.push(fn); }
   registerEditorExtension(ext) { this.extensions = ext; }
   registerEvent() {}
+  registerDomEvent(el, name, fn, options) {
+    el.addEventListener(name, fn, options);
+    this.register(() => el.removeEventListener(name, fn, options));
+  }
   addCommand() {}
   addSettingTab() {}
 }

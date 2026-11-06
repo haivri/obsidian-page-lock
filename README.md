@@ -10,7 +10,7 @@ keep references current when files are renamed or moved.
 
 ## Features
 
-- Allows selecting and copying locked editor text without unlocking.
+- Allows selecting and copying locked editor text and the YAML Properties read-only preview without unlocking.
 - Locks a note against every edit: typing, paste, drag-and-drop, cut, and undo are all blocked
   in Live Preview and Source mode.
 - Blocks rendered task checkboxes, Meta Bind fields/buttons, and property controls in

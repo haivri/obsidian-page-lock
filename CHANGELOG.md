@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.2 - 2026-11-06
+
+- Restore text selection and copying in YAML Properties' read-only preview when a note is locked, in both Live Preview and Reading view.
+- Keep the YAML preview read-only and retain all property-control and vault-write protections.
+- Add Chromium regressions for YAML selection, copying, double-click selection, and write protection in both view modes.
+
 ## 1.2.1 - 2026-11-06
 
 - Restore text selection and copying in locked Live Preview and Source editors, even with Obsidian's global selection restriction. All edit/write guards remain active.
