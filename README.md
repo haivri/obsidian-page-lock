@@ -10,6 +10,7 @@ keep references current when files are renamed or moved.
 
 ## Features
 
+- Allows selecting and copying locked editor text without unlocking.
 - Locks a note against every edit: typing, paste, drag-and-drop, cut, and undo are all blocked
   in Live Preview and Source mode.
 - Blocks rendered task checkboxes, Meta Bind fields/buttons, and property controls in
@@ -110,7 +111,12 @@ windows, and embedded editors. Canvas files and other non-markdown files are not
 - **Confirm before unlocking** — ask before unlocking, preventing accidental unlocks from a
   stray tap (default off).
 
-Automatic link updates use a feature-detected Obsidian internal hook. If a future version
+Simple Gallery 1.8.4+ can also update image destinations inside gallery fences through a
+scoped Page Lock integration. This honors **Allow automatic link updates** and validates
+each destination atomically; it never unlocks the note. Gallery updates use Simple
+Gallery’s own rename setting, independently of Obsidian’s native link preference.
+
+Automatic native link updates use a feature-detected Obsidian internal hook. If a future version
 removes that hook, the note remains protected and automatic updates stay blocked. If reference
 positions or property values changed before an update, Page Lock leaves that note unchanged
 and shows a notice rather than risk changing unrelated content. Requires Obsidian 1.5.7 or newer.

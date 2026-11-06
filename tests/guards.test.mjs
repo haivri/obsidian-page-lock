@@ -361,3 +361,39 @@ test('mobile banner uses the note inset without moving the toolbar and disappear
   for (const cleanup of plugin.cleanups) cleanup();
   dom.window.close();
 });
+
+test('gallery integration updates only verified destinations while locked and keeps other writes blocked', async () => {
+  const content = '---\nlocked: true # keep\n---\n```simple-gallery\n- ![[old.png|Alias]]\n  caption: Keep\n```\n';
+  const { plugin, file, contents, vault } = renameSetup(content);
+  const from = content.indexOf('old.png');
+  const edit = { from, to: from + 7, expected: 'old.png', replacement: 'new.png' };
+  assert.equal(await plugin.applyGalleryLinkUpdates(file, [edit]), 'applied');
+  assert.equal(contents.get(file.path), content.replace('old.png', 'new.png'));
+  assert.equal(await plugin.applyGalleryLinkUpdates(file, [edit]), 'stale');
+  assert.equal(await plugin.applyGalleryLinkUpdates(file, [null]), 'stale');
+  await assert.rejects(vault.process(file, text => text + 'unrelated'), /locked/);
+  assert.equal(plugin.isFileLocked(file), true);
+  plugin.settings.allowLinkUpdates = false;
+  assert.equal(await plugin.applyGalleryLinkUpdates(file, []), 'blocked');
+  plugin.settings.allowLinkUpdates = true;
+  for (const cleanup of plugin.cleanups) cleanup();
+  assert.equal(await plugin.applyGalleryLinkUpdates(file, [edit]), 'blocked');
+});
+
+test('gallery update rechecks opt-out and stale content inside the atomic writer', async () => {
+  for (const changed of ['optout', 'stale', 'unload']) {
+    const { plugin, file } = setup();
+    let content = '```simple-gallery\n- old.png\n```';
+    let beforeWrite;
+    plugin.app.vault.process = async (_, fn) => { beforeWrite(); content = fn(content); return content; };
+    plugin.installVaultGuard();
+    beforeWrite = () => {
+      if (changed === 'optout') plugin.settings = { ...plugin.settings, allowLinkUpdates: false };
+      if (changed === 'stale') content = content.replace('old.png', 'other.png');
+      if (changed === 'unload') for (const cleanup of plugin.cleanups) cleanup();
+    };
+    const from = content.indexOf('old.png');
+    assert.equal(await plugin.applyGalleryLinkUpdates(file, [{ from, to: from + 7, expected: 'old.png', replacement: 'new.png' }]), changed === 'stale' ? 'stale' : 'blocked');
+    assert.equal(content.includes('new.png'), false);
+  }
+});

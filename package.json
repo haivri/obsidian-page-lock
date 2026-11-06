@@ -1,6 +1,6 @@
 {
   "name": "page-lock",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Lock notes against editing until unlocked, with a frontmatter-synced lock that blocks the editor and other plugins.",
   "main": "main.js",
   "scripts": {
@@ -10,7 +10,8 @@
     "ship": "npm run publish:vault && git push origin",
     "lint": "eslint src/**/*.ts",
     "version": "node version-bump.mjs && git add manifest.json versions.json",
-    "test": "npm run build && node --test tests/*.test.mjs"
+    "test": "npm run build && node --test tests/*.test.mjs",
+    "test:browser": "playwright test"
   },
   "keywords": [
     "obsidian",
@@ -25,6 +26,7 @@
   "devDependencies": {
     "@codemirror/state": "6.5.0",
     "@codemirror/view": "6.38.6",
+    "@playwright/test": "1.65.0",
     "@types/node": "^24.0.0",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",

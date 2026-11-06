@@ -39,6 +39,12 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Test browser selection and copy
+        run: npm run test:browser
+
       - name: Build
         run: npm run build
 

@@ -15,6 +15,7 @@ import {
 import { Annotation, EditorState, Prec, StateEffect, StateField, Transaction } from '@codemirror/state';
 import { EditorView } from '@codemirror/view';
 import { applyLinkUpdates, LinkUpdateBatch } from './link-updates';
+import { applyGalleryLinkUpdates as applyGalleryUpdates, GalleryLinkUpdate, GalleryUpdateStatus } from './gallery-links';
 
 /** Marks note-lock's own editor re-sync transactions so the filter lets them through. */
 const reloadAnnotation = Annotation.define<boolean>();
@@ -115,6 +116,7 @@ export default class NoteLockPlugin extends Plugin {
 
   /** Path allowed through the vault guard while our own lock/unlock write runs. */
   private bypassPath: string | null = null;
+  private galleryProcess: App['vault']['process'] | null = null;
 
   /**
    * Per-editor lock state. Initialized when an editor is created and updated
@@ -167,7 +169,7 @@ export default class NoteLockPlugin extends Plugin {
       // to actually land on the DOM. Asserted only while locked so unlocked
       // notes stay entirely Obsidian-managed.
       Prec.highest(EditorView.contentAttributes.from(this.lockedField, (locked): Record<string, string> =>
-        locked ? { contenteditable: 'false' } : {}))
+        locked ? { contenteditable: 'false', 'data-page-lock': 'true' } : {}))
     ]);
 
     this.installVaultGuard();
@@ -370,6 +372,7 @@ export default class NoteLockPlugin extends Plugin {
     const originalModify = vault.modify.bind(vault);
     const originalAppend = vault.append.bind(vault);
     const originalProcess = vault.process.bind(vault);
+    this.galleryProcess = originalProcess;
     this.installLinkUpdateHandler(originalProcess);
     const fileManager = this.app.fileManager;
     const originalFrontMatter = fileManager.processFrontMatter.bind(fileManager);
@@ -406,11 +409,28 @@ export default class NoteLockPlugin extends Plugin {
       guard(file) ?? originalFrontMatter(file, fn, options);
 
     this.register(() => {
+      this.galleryProcess = null;
       fileManager.processFrontMatter = originalFrontMatter;
       vault.modify = originalModify;
       vault.append = originalAppend;
       vault.process = originalProcess;
     });
+  }
+
+  /** Destination-only gallery repair; never opens a general write bypass. */
+  async applyGalleryLinkUpdates(file: TFile, updates: GalleryLinkUpdate[]): Promise<GalleryUpdateStatus> {
+    const process = this.galleryProcess;
+    if (!process || !this.settings.allowLinkUpdates) return 'blocked';
+    if (!Array.isArray(updates)) return 'stale';
+    let status: GalleryUpdateStatus = 'unchanged';
+    await process(file, content => {
+      if (this.galleryProcess !== process || !this.settings.allowLinkUpdates) { status = 'blocked'; return content; }
+      const changed = applyGalleryUpdates(content, updates);
+      if (changed === null) { status = 'stale'; return content; }
+      status = changed === content ? 'unchanged' : 'applied';
+      return changed;
+    });
+    return status;
   }
 
   private installLinkUpdateHandler(process: App['vault']['process']): void {

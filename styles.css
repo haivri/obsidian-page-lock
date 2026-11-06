@@ -75,3 +75,9 @@ body.is-mobile .note-lock-banner {
 body.is-mobile .note-lock-banner-fallback {
   margin-top: max(10px, env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
 }
+
+/* Locked editors remain selectable without becoming editing hosts. */
+.cm-content[data-page-lock="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}

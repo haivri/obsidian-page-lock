@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.1 - 2026-11-06
+
+- Restore text selection and copying in locked Live Preview and Source editors, even with Obsidian's global selection restriction. All edit/write guards remain active.
+- Allow Simple Gallery 1.8.4+ to repair verified image destinations in locked gallery blocks when **Allow automatic link updates** is enabled. Reject stale, overlapping, or structurally invalid replacements without changing the note.
+- Add destination-validation tests and a Chromium selection/copy/edit-protection regression, also run on Linux before releases.
+
 ## 1.2.0 - 2026-10-01
 
 - Add **Allow automatic link updates**, enabled by default for new and existing installations.
