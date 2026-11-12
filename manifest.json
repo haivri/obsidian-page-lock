@@ -1,7 +1,7 @@
 {
   "id": "page-lock",
   "name": "Page Lock",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "minAppVersion": "1.5.7",
   "description": "Lock notes against editing until unlocked, with a frontmatter-synced lock that blocks the editor and other plugins.",
   "author": "Robert Fleming",

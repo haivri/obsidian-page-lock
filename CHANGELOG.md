@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.3 - 2026-11-12
+
+- Allow selecting and copying a locked note's inline title without enabling editing or renaming. Keep the rule scoped to titles locked by Page Lock.
+- Add Chromium regressions for title selection, clipboard copy, blocked edits, repeated refreshes, unlock/relock, and cleanup across Live Preview, Source, and Reading view fixtures in light and dark themes.
+- Thanks to @nirvana6 for identifying and proposing inline-title selection in PR #2.
+
 ## 1.2.2 - 2026-11-06
 
 - Restore text selection and copying in YAML Properties' read-only preview when a note is locked, in both Live Preview and Reading view.
